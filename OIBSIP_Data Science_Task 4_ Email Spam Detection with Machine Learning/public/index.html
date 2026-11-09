@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spam Detector</title>
+<meta name="description" content="Paste a message and find out whether a machine learning model thinks it is spam.">
+<style>
+  :root {
+    --page: #e9ecef; --shell: #ffffff; --panel: #f5f6f5; --card: #ffffff; --ink: #0f1a14; --muted: #64706a;
+    --line: #e4e8e5; --field: #f1f3f2;
+    --g900: #0b3d2a; --g700: #14663f; --g500: #1f8a56; --g300: #5fbf92; --g100: #d9f3e5;
+    --red: #b42318; --red-soft: #fde8e6; --on-green: #ffffff;
+    --shadow: 0 1px 2px rgba(15,26,20,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0a0f0d; --shell: #111815; --panel: #161e1a; --card: #1b2520; --ink: #eef4f0; --muted: #98a69e;
+      --line: #2a3630; --field: #222d27;
+      --g900: #07281b; --g700: #1b8a57; --g500: #34b078; --g300: #7bd3a8; --g100: #17382a;
+      --red: #ff9b8f; --red-soft: #46201c; --on-green: #06150e;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .shell { max-width: 1240px; margin: 24px auto; background: var(--shell); border-radius: 28px; padding: 16px; display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+  @media (max-width: 900px) { .shell { grid-template-columns: 1fr; margin: 0; border-radius: 0; padding: 12px; } }
+
+  /* sidebar */
+  .side { background: var(--panel); border-radius: 20px; padding: 22px 16px; display: flex; flex-direction: column; gap: 22px; position: sticky; top: 16px; align-self: start; min-height: calc(100vh - 80px); }
+  @media (max-width: 900px) { .side { position: static; min-height: 0; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 14px; flex-wrap: wrap; gap: 8px; } }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; letter-spacing: -.01em; }
+  .brand svg { width: 34px; height: 34px; flex: none; }
+  .menu-title { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 10px; }
+  nav { display: flex; flex-direction: column; gap: 2px; }
+  @media (max-width: 900px) { nav { flex-direction: row; flex-wrap: wrap; } .menu-title { display: none; } }
+  nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--muted); text-decoration: none; font-weight: 500; }
+  nav a:hover { background: var(--field); color: var(--ink); }
+  nav a.on { color: var(--ink); font-weight: 700; box-shadow: inset 3px 0 0 var(--g700); background: var(--card); }
+  nav svg { width: 18px; height: 18px; flex: none; }
+  .tip { margin-top: auto; border-radius: 16px; padding: 16px; color: #fff; background: linear-gradient(150deg, var(--g700), var(--g900)); font-size: .85rem; }
+  .tip strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+  @media (max-width: 900px) { .tip { display: none; } }
+
+  /* main */
+  main { display: grid; gap: 16px; align-content: start; min-width: 0; }
+  .panel { background: var(--panel); border-radius: 20px; padding: 22px; }
+  .head { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; }
+  h1 { font-size: clamp(1.7rem, 4vw, 2.2rem); margin: 0; letter-spacing: -.02em; }
+  .sub { color: var(--muted); margin: 4px 0 0; }
+  .btn { border: 0; border-radius: 999px; padding: 12px 22px; font: inherit; font-weight: 700; cursor: pointer; background: var(--g700); color: var(--on-green); }
+  .btn.ghost { background: transparent; color: var(--g700); box-shadow: inset 0 0 0 1.5px var(--g700); }
+  .btn:disabled { opacity: .6; cursor: wait; }
+  :focus-visible { outline: 3px solid var(--g500); outline-offset: 2px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--card); border-radius: 18px; padding: 18px; box-shadow: var(--shadow); }
+  .stat.hero { background: linear-gradient(150deg, var(--g700), var(--g900)); color: #fff; }
+  .stat h2 { margin: 0; font-size: .95rem; font-weight: 600; }
+  .stat .n { font-size: 2.6rem; font-weight: 800; line-height: 1.1; margin: 10px 0 6px; letter-spacing: -.02em; }
+  .stat p { margin: 0; font-size: .8rem; color: var(--muted); }
+  .stat.hero p { color: #bfe9d2; }
+
+  .row2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+  .row3 { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .row2, .row3 { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); min-width: 0; }
+  .card h2 { font-size: 1.05rem; margin: 0 0 14px; }
+  label { display: block; font-weight: 600; margin-bottom: 8px; }
+  textarea { width: 100%; min-height: 150px; resize: vertical; padding: 12px 14px; font: inherit; color: inherit; background: var(--field); border: 1px solid var(--line); border-radius: 14px; }
+  .meta { display: flex; justify-content: space-between; color: var(--muted); font-size: .82rem; margin: 4px 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .chips span { color: var(--muted); font-size: .85rem; }
+  .chip { border: 1px solid var(--line); background: var(--field); color: var(--ink); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: .85rem; cursor: pointer; }
+  .chip:hover { border-color: var(--g500); }
+  .wide { width: 100%; }
+
+  .verdict { font-size: 2rem; font-weight: 800; margin: 0; letter-spacing: -.02em; }
+  .verdict.spam { color: var(--red); } .verdict.ham { color: var(--g700); }
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: .82rem; font-weight: 600; margin: 6px 0 12px; }
+  .badge.spam { background: var(--red-soft); color: var(--red); } .badge.ham { background: var(--g100); color: var(--g700); }
+  .clues h3 { font-size: .85rem; margin: 12px 0 6px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { padding: 3px 10px; border-radius: 8px; font-size: .85rem; }
+  .tag.spam { background: var(--red-soft); color: var(--red); } .tag.ham { background: var(--g100); color: var(--g700); }
+  .note { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); margin: 14px 0 0; padding-top: 10px; }
+  .error { color: var(--red); font-weight: 600; margin: 0; }
+  .empty { color: var(--muted); margin: 0; }
+
+  /* pill bar chart */
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 14px; }
+  .tab { border: 0; border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; background: var(--field); color: var(--muted); }
+  .tab[aria-pressed="true"] { background: var(--g700); color: var(--on-green); }
+  .bars { display: flex; align-items: flex-end; justify-content: space-around; gap: 12px; height: 220px; padding-top: 24px; }
+  .bar { flex: 1; max-width: 110px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+  .bar .val { font-size: .8rem; font-weight: 700; }
+  .bar .pill { width: 54px; max-width: 100%; border-radius: 999px; background: var(--g300); min-height: 14px; transition: height .4s; }
+  .bar.best .pill { background: var(--g700); }
+  .bar .name { font-size: .78rem; color: var(--muted); text-align: center; line-height: 1.2; min-height: 2.4em; }
+
+  /* gauge */
+  .gauge { display: grid; place-items: center; }
+  .gauge svg { width: 100%; max-width: 260px; }
+  .gauge .big { font-size: 2.1rem; font-weight: 800; letter-spacing: -.02em; text-align: center; margin-top: -62px; }
+  .gauge .lbl { color: var(--muted); font-size: .85rem; text-align: center; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: center; margin-top: 18px; font-size: .82rem; color: var(--muted); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+
+  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .list li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
+  .mark { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; font-weight: 800; }
+  .mark.spam { background: var(--red-soft); color: var(--red); } .mark.ham { background: var(--g100); color: var(--g700); }
+  .list .t { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box;-webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+  .list .s { font-size: .75rem; color: var(--muted); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .two { grid-template-columns: 1fr; } }
+  .two h3 { font-size: .9rem; margin: 0 0 8px; }
+  footer { color: var(--muted); font-size: .82rem; padding: 0 6px 6px; }
+  .sr { position: absolute; left: -9999px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 6 8v10c0 9 6 16 14 19 8-3 14-10 14-19V8L20 3z" fill="var(--g700)"/><path d="M13 20l5 5 9-10" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Spam Detector
+    </div>
+    <div>
+      <p class="menu-title">Menu</p>
+      <nav aria-label="Sections">
+        <a href="#top" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+        <a href="#check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16v11H8l-4 4V5z"/></svg>Check a message</a>
+        <a href="#models"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Model results</a>
+        <a href="#words"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h6"/></svg>Signal words</a>
+      </nav>
+    </div>
+    <div class="tip"><strong>A learning project</strong>It can be wrong, especially on new kinds of scams. Don't rely on it to protect you.</div>
+  </aside>
+
+  <main id="top">
+    <div class="panel">
+      <div class="head">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="sub">Check a message for spam and see how well the model behind it performs.</p>
+        </div>
+        <a class="btn" href="#check" style="text-decoration:none">Check a message</a>
+      </div>
+    </div>
+
+    <section class="stats" aria-label="Key numbers">
+      <div class="stat hero"><h2>Messages trained on</h2><div class="n" id="s1">–</div><p id="s1p">unique messages</p></div>
+      <div class="stat"><h2>Spam in the data</h2><div class="n" id="s2">–</div><p id="s2p">of all messages</p></div>
+      <div class="stat"><h2>Accuracy</h2><div class="n" id="s3">–</div><p>on messages it never saw</p></div>
+      <div class="stat"><h2>Spam caught</h2><div class="n" id="s4">–</div><p id="s4p">recall on the test set</p></div>
+    </section>
+
+    <div class="row2" id="check">
+      <section class="card" aria-labelledby="h-in">
+        <h2 id="h-in">Check a message</h2>
+        <label for="msg">Type or paste a message</label>
+        <textarea id="msg" maxlength="5000" placeholder="e.g. Congratulations! You have won a free prize. Reply now to claim it."></textarea>
+        <div class="meta"><span>Nothing is stored on the server.</span><span><span id="n">0</span> / 5000</span></div>
+        <div class="chips"><span>Try an example:</span>
+          <button class="chip" type="button" data-ex="spam">Spam-like</button>
+          <button class="chip" type="button" data-ex="ham">Normal message</button>
+        </div>
+        <button class="btn wide" id="go" type="button">Check message</button>
+      </section>
+      <section class="card" aria-live="polite" aria-labelledby="h-out">
+        <h2 id="h-out">Result</h2>
+        <div id="result"><p class="empty">Enter a message and press <strong>Check message</strong>.</p></div>
+      </section>
+    </div>
+
+    <div class="row3" id="models">
+      <section class="card" aria-labelledby="h-m">
+        <h2 id="h-m">Model comparison</h2>
+        <div class="tabs" role="group" aria-label="Metric">
+          <button class="tab" data-m="Accuracy" aria-pressed="false">Accuracy</button>
+          <button class="tab" data-m="Precision" aria-pressed="false">Precision</button>
+          <button class="tab" data-m="Recall" aria-pressed="true">Recall</button>
+          <button class="tab" data-m="F1-score" aria-pressed="false">F1</button>
+        </div>
+        <div class="bars" id="bars" role="img" aria-label="Bar chart comparing the three models"></div>
+        <p class="note" id="metricNote"></p>
+      </section>
+      <section class="card" aria-labelledby="h-g">
+        <h2 id="h-g">Spam caught in testing</h2>
+        <div class="gauge">
+          <svg viewBox="0 0 220 130" aria-hidden="true">
+            <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--card)"/><rect width="2.4" height="6" fill="var(--muted)" opacity=".55"/></pattern></defs>
+            <path id="gMiss" d="" fill="none" stroke="url(#hatch)" stroke-width="30"/>
+            <path id="gHit" d="" fill="none" stroke="var(--g700)" stroke-width="30"/>
+          </svg>
+          <div class="big" id="gBig">–</div>
+          <div class="lbl">of real spam caught</div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </section>
+    </div>
+
+    <div class="row3" id="words">
+      <section class="card" aria-labelledby="h-w">
+        <h2 id="h-w">Words the model watches</h2>
+        <div class="two">
+          <div><h3>Point to spam</h3><div class="tags" id="spamWords"></div></div>
+          <div><h3>Point to normal messages</h3><div class="tags" id="hamWords"></div></div>
+        </div>
+        <p class="note">Words are shown in their shortened (stemmed) form, so "claiming" appears as "claim".</p>
+      </section>
+      <section class="card" aria-labelledby="h-h">
+        <h2 id="h-h">Checked this visit</h2>
+        <ul class="list" id="history"><li><span></span><span class="empty">Messages you check will appear here. They are only kept while this page is open.</span></li></ul>
+      </section>
+    </div>
+
+    <footer id="facts">Loading model details…</footer>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const EXAMPLES = {
+  spam: "WINNER!! As a valued network customer you have been selected to receive a £900 prize reward! To claim call 09061701461. Claim code KL341. Valid 12 hours only.",
+  ham: "Hey, are we still meeting for lunch tomorrow? Let me know what time works for you."
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const tags = (w, k) => w.map((x) => `<span class="tag ${k}">${esc(x)}</span>`).join("");
+const pct = (x, d = 1) => (x * 100).toFixed(d) + "%";
+let INFO = null, metric = "Recall";
+const history = [];
+
+/* ---- checking a message ---- */
+$("msg").addEventListener("input", () => { $("n").textContent = $("msg").value.length; });
+document.querySelectorAll("[data-ex]").forEach((b) => b.addEventListener("click", () => {
+  $("msg").value = EXAMPLES[b.dataset.ex]; $("n").textContent = $("msg").value.length; check();
+}));
+$("go").addEventListener("click", check);
+
+async function check() {
+  const message = $("msg").value;
+  $("go").disabled = true; $("go").textContent = "Checking…";
+  try {
+    const res = await fetch("/api/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) });
+    const d = await res.json();
+    if (!res.ok) { $("result").innerHTML = `<p class="error">${esc(d.error || "Something went wrong.")}</p>`; return; }
+    const spam = d.label === "spam";
+    let h = `<p class="verdict ${d.label}">${spam ? "Looks like spam" : "Looks fine"}</p><span class="badge ${d.label}">${esc(d.confidence)}</span>`;
+    if (d.spam_clues.length) h += `<div class="clues"><h3>Words that pointed to spam</h3><div class="tags">${tags(d.spam_clues, "spam")}</div></div>`;
+    if (d.ham_clues.length) h += `<div class="clues"><h3>Words that pointed to a normal message</h3><div class="tags">${tags(d.ham_clues, "ham")}</div></div>`;
+    if (!d.known_words) h += `<p class="note">None of these words appeared in the training data, so this is mostly a guess.</p>`;
+    h += `<p class="note">Score ${d.score > 0 ? "+" : ""}${d.score} (above 0 is spam). It is an estimate, not a guarantee.</p>`;
+    $("result").innerHTML = h;
+    history.unshift({ text: message.trim(), label: d.label, confidence: d.confidence });
+    renderHistory();
+  } catch (e) {
+    $("result").innerHTML = `<p class="error">Couldn't reach the server. Please try again.</p>`;
+  } finally { $("go").disabled = false; $("go").textContent = "Check message"; }
+}
+
+function renderHistory() {
+  $("history").innerHTML = history.slice(0, 5).map((x) =>
+    `<li><span class="mark ${x.label}">${x.label === "spam" ? "!" : "✓"}</span><span><span class="t">${esc(x.text)}</span><span class="s">${x.label === "spam" ? "Spam" : "Normal"} · ${esc(x.confidence)}</span></span></li>`).join("");
+}
+
+/* ---- model results ---- */
+const NOTES = {
+  "Accuracy": "Share of all messages classified correctly. It can look great even when a lot of spam slips through, because most messages are not spam.",
+  "Precision": "When the model says spam, how often it is right. High precision means few good messages are wrongly blocked.",
+  "Recall": "Of all the real spam, how much was caught. This is the number that tells you how much spam still gets through.",
+  "F1-score": "A single score that balances precision and recall."
+};
+function drawBars() {
+  const entries = Object.entries(INFO.metrics);
+    // Bars start at zero so differences are not exaggerated
+  $("bars").innerHTML = entries.map(([name, m]) => {
+    const v = m[metric], h = Math.max(v * 100, 4);
+    const shown = metric === "F1-score" ? v.toFixed(3) : pct(v);
+    return `<div class="bar ${name === INFO.model_name ? "best" : ""}"><span class="val">${shown}</span><div class="pill" style="height:${h}%"></div><span class="name">${esc(name)}</span></div>`;
+  }).join("");
+  $("metricNote").textContent = NOTES[metric] + " Darkest bar: the model used on this site.";
+  document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-pressed", String(t.dataset.m === metric)));
+}
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => { metric = t.dataset.m; if (INFO) drawBars(); }));
+
+function arc(r, from, to) { // semicircle arc between two fractions (0..1) of the half-circle
+  const a = (f) => Math.PI * (1 - f), cx = 110, cy = 110;
+  const x = (f) => cx + r * Math.cos(a(f)), y = (f) => cy - r * Math.sin(a(f));
+  return `M ${x(from)} ${y(from)} A ${r} ${r} 0 0 1 ${x(to)} ${y(to)}`;
+}
+
+async function loadInfo() {
+  try {
+    INFO = await (await fetch("/api/info")).json();
+    const c = INFO.test_confusion, best = INFO.metrics[INFO.model_name];
+    const spamTotal = c.spam_caught + c.spam_missed, recall = c.spam_caught / spamTotal;
+    $("s1").textContent = INFO.dataset_messages.toLocaleString();
+    $("s1p").textContent = `unique messages (${INFO.test_messages.toLocaleString()} kept back for testing)`;
+    $("s2").textContent = pct(INFO.spam / INFO.dataset_messages, 0);
+    $("s2p").textContent = `${INFO.spam.toLocaleString()} spam, ${INFO.ham.toLocaleString()} normal`;
+    $("s3").textContent = pct(best.Accuracy);
+    $("s4").textContent = pct(recall);
+    $("s4p").textContent = `${c.spam_caught} of ${spamTotal} spam messages in testing`;
+    drawBars();
+    $("gHit").setAttribute("d", arc(80, 0.0, Math.max(recall, 0.01)));
+    $("gMiss").setAttribute("d", arc(80, recall, 1));
+    $("gBig").textContent = pct(recall);
+    $("legend").innerHTML =
+      `<span><i class="dot" style="background:var(--g700)"></i>Caught ${c.spam_caught}</span>` +
+      `<span><i class="dot" style="background:var(--muted);opacity:.6"></i>Missed ${c.spam_missed}</span>` +
+      `<span>Good messages wrongly flagged: ${c.ham_wrongly_flagged} of ${c.ham_kept + c.ham_wrongly_flagged}</span>`;
+    $("spamWords").innerHTML = tags(INFO.top_spam_words, "spam");
+    $("hamWords").innerHTML = tags(INFO.top_ham_words, "ham");
+    $("facts").textContent = `Model: ${INFO.model_name}, trained on the SMS Spam Collection. Results are measured on messages the model never saw during training.`;
+  } catch (e) { $("facts").textContent = "Model details are unavailable right now."; }
+}
+loadInfo();
+</script>
+</body>
+</html>
